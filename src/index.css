@@ -1,0 +1,192 @@
+@import 'leaflet/dist/leaflet.css';
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ── Global resets ── */
+*, *::before, *::after { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body {
+  -webkit-font-smoothing: antialiased;
+  background:
+    radial-gradient(ellipse 70% 45% at 8% -8%, rgba(197,255,63,0.16) 0%, transparent 55%),
+    #f7f7f7;
+}
+a { text-decoration: none; color: inherit; }
+button { font-family: inherit; cursor: pointer; background: none; border: none; }
+ul { list-style: none; padding: 0; margin: 0; }
+input, textarea { font-family: inherit; }
+
+/* ── Listing card: hover lift + image zoom ── */
+.listing-card {
+  border-radius: 16px;
+  transition: transform 0.22s cubic-bezier(.22,1,.36,1), box-shadow 0.22s ease;
+  will-change: transform;
+}
+.listing-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 16px 40px rgba(15,23,42,0.11), 0 4px 10px rgba(15,23,42,0.06);
+}
+.listing-card .card-img {
+  overflow: hidden;
+  border-radius: 14px;
+}
+.listing-card .card-img img,
+.listing-card .card-img .card-bg {
+  transition: transform 0.35s cubic-bezier(.22,1,.36,1);
+}
+.listing-card:hover .card-img img,
+.listing-card:hover .card-img .card-bg {
+  transform: scale(1.04);
+}
+
+/* ── Button lift: attach to any primary/cta button ── */
+.btn-lift {
+  transition: transform 0.12s ease, box-shadow 0.12s ease !important;
+}
+.btn-lift:hover {
+  transform: translateY(-2px) !important;
+  box-shadow: 0 8px 24px rgba(15,23,42,0.24) !important;
+}
+
+/* ── Dark KPI block ── */
+.kpi-dark {
+  background: linear-gradient(135deg, #111827 0%, #1f2937 100%);
+  border-radius: 16px;
+  padding: 20px 20px 18px;
+}
+.kpi-dark-value {
+  color: #c5ff3f;
+  font-size: 26px;
+  font-weight: 700;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+}
+.kpi-dark-label {
+  color: rgba(255,255,255,0.50);
+  font-size: 12px;
+  margin-top: 5px;
+}
+.kpi-dark-meta {
+  color: rgba(255,255,255,0.38);
+  font-size: 11px;
+  margin-top: 10px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+/* ── Search bar: lime focus ring ── */
+#search-bar:focus-within {
+  box-shadow: 0 0 0 3px rgba(197,255,63,0.40), 0 4px 16px rgba(0,0,0,0.12);
+  border-color: #111827;
+}
+
+/* ── Card gradient backgrounds (Leaflet-managed or dynamic — not Tailwind) ── */
+.card-img--1 { background: linear-gradient(135deg, #5c6bc0, #9575cd); }
+.card-img--2 { background: linear-gradient(135deg, #ef5350, #e91e63); }
+.card-img--3 { background: linear-gradient(135deg, #26c6da, #42a5f5); }
+.card-img--4 { background: linear-gradient(135deg, #66bb6a, #26c6da); }
+.card-img--5 { background: linear-gradient(135deg, #ff7043, #ffb74d); }
+.card-img--6 { background: linear-gradient(135deg, #7e57c2, #5c6bc0); }
+.card-img--7 { background: linear-gradient(135deg, #ffb74d, #ff7043); }
+.card-img--8 { background: linear-gradient(135deg, #4fc3f7, #26c6da); }
+
+/* ── Leaflet map markers (Leaflet-managed DOM) ── */
+
+/* Zero-size wrapper so Leaflet doesn't clip the pill */
+.map-marker-wrap {
+  width: 0 !important;
+  height: 0 !important;
+  overflow: visible !important;
+  background: none !important;
+  border: none !important;
+}
+
+.map-marker {
+  display: inline-block;
+  position: relative;
+  transform: translate(-50%, -50%);
+  background: #ffffff;
+  color: #111827;
+  font-size: 13px;
+  font-weight: 700;
+  padding: 6px 12px;
+  border-radius: 9999px;
+  box-shadow: 0 1px 4px rgba(0,0,0,.18), 0 4px 14px rgba(0,0,0,.13);
+  cursor: pointer;
+  white-space: nowrap;
+  border: none;
+  transition: box-shadow .15s, background .15s, color .15s;
+  font-family: system-ui, -apple-system, sans-serif;
+  letter-spacing: -0.01em;
+  user-select: none;
+}
+.map-marker:hover {
+  box-shadow: 0 2px 8px rgba(0,0,0,.22), 0 6px 20px rgba(0,0,0,.16);
+}
+.map-marker--active {
+  background: #111827;
+  color: #c5ff3f;
+  box-shadow: 0 2px 10px rgba(0,0,0,.35), 0 6px 24px rgba(0,0,0,.2);
+}
+
+/* ── Leaflet popup overrides ── */
+.leaflet-popup-content-wrapper {
+  padding: 0 !important;
+  border-radius: 20px !important;
+  overflow: visible !important;
+  box-shadow: none !important;
+  border: none !important;
+  background: transparent !important;
+}
+.leaflet-popup-content {
+  margin: 0 !important;
+  width: auto !important;
+  overflow: visible !important;
+}
+.leaflet-popup-tip-container { display: none; }
+
+
+/* ── Home page hero (full dark gradient, not standard page) ── */
+/* ── Photo carousel fade ── */
+@keyframes carousel-fade {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+/* ── Price histogram range thumbs ── */
+.range-thumb {
+  height: 20px;
+  -webkit-appearance: none;
+  appearance: none;
+  background: transparent;
+}
+.range-thumb::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: transparent;
+  cursor: grab;
+}
+.range-thumb::-moz-range-thumb {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: transparent;
+  border: none;
+  cursor: grab;
+}
+.range-thumb::-webkit-slider-runnable-track { background: transparent; }
+.range-thumb::-moz-range-track { background: transparent; }
+
+.home-hero {
+  min-height: 100dvh;
+  background: linear-gradient(135deg, #111827 0%, #1f2937 50%, #0f172a 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 24px;
+}
