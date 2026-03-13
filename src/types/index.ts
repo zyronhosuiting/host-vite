@@ -1,44 +1,37 @@
 export interface Listing {
   id: number;
-  imgClass: string;
-  cats: string;
-  loc: string;
-  mapLoc: string;
-  lat: number;
-  lng: number;
-  badge: string;
-  badgeMod: string;
   name: string;
-  sub: string;
-  dates: string;
+  categories: string[];
+  location: string;
+  mapLocation: string;
+  latitude: number;
+  longitude: number;
+  badge: string;
+  subtitle: string;
+  availableDates: string;
   listedDate: string;
   updatedDate: string;
   price: number;
   rating: number;
   reviews: number;
-  dots: number;
-  saved: boolean;
-  color: string;
-  photos?: string[];
+  photos: string[];
   coverIndex?: number;
+  // Detail fields (merged from former ListingExtra)
+  area: number;
+  bedrooms: number;
+  bathrooms: number;
+  description: string;
+  features: string[];
+  propertyType?: string;
+  leaseTerm?: string;
+  ownerPhone?: string;
+  amenities: string[];
 }
 
 export interface Category {
   key: string;
   label: string;
   icon: string;
-}
-
-export interface ListingExtra {
-  area: number;
-  beds: number;
-  baths: number;
-  desc: string;
-  features: string[];
-  propertyType?: string;
-  leaseTerm?: string;
-  ownerPhone?: string;
-  amenities?: string[];
 }
 
 export interface Conversation {
@@ -65,7 +58,7 @@ export interface FilterState {
   minPrice: number;            // HKD/month, 0 = no min
   maxPrice: number;            // HKD/month, 0 = no max
   districts: Set<string>;      // HK 18 districts (Chinese names)
-  bedroomType: number;         // 0 = any, 1+ = min bedrooms
+  bedrooms: number;            // Renamed from bedroomType, 0 = any, 1+ = min bedrooms
   bathrooms: number;           // 0 = any
   areaRange: string;           // '' | '200-400' | '400-600' | '600-800' | '800+'
   floorLevel: Set<string>;     // low | mid | high
@@ -80,9 +73,9 @@ export interface FilterState {
 
 export interface RentalTransaction {
   date: string;
-  district: string;   // matches listing.loc substring for filtering
+  district: string;
   building: string;
-  cats: string;       // space-separated cat keys matching Listing.cats
+  categories: string[];
   unitType: string;
   area: number;
   monthlyRent: number;
@@ -100,4 +93,5 @@ export interface ProfileData {
   email: string;
   phone: string;
   about: string;
+  avatarUrl?: string;
 }

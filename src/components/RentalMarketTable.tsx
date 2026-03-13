@@ -3,20 +3,19 @@ import { RENTAL_TRANSACTIONS } from '../data/rentalTransactions';
 
 interface RentalMarketTableProps {
   district: string;
-  cats: string;
+  categories: string[];
 }
 
 const PAGE_SIZE = 5;
 
-export default function RentalMarketTable({ district, cats }: RentalMarketTableProps) {
+export default function RentalMarketTable({ district, categories: listingCats }: RentalMarketTableProps) {
   const [expanded, setExpanded] = useState(false);
 
   const districtKey = district.split(/[,，\s]/)[0];
-  const listingCats = cats.split(' ');
 
   function score(t: (typeof RENTAL_TRANSACTIONS)[0]): number {
     const sameDistrict = t.district === districtKey ? 0 : 1;
-    const sameType     = t.cats.split(' ').some(c => listingCats.includes(c)) ? 0 : 1;
+    const sameType     = t.categories.some(c => listingCats.includes(c)) ? 0 : 1;
     return sameDistrict * 2 + sameType;
   }
 
@@ -65,7 +64,7 @@ export default function RentalMarketTable({ district, cats }: RentalMarketTableP
               {visible.map((t, i) => {
                 const rentPerSqft = Math.round(t.monthlyRent / t.area);
                 const isSameDistrict = t.district === districtKey;
-                const isSameType = isSameDistrict && t.cats.split(' ').some(c => listingCats.includes(c));
+                const isSameType = isSameDistrict && t.categories.some(c => listingCats.includes(c));
                 return (
                   <tr
                     key={i}

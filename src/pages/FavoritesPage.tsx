@@ -35,16 +35,16 @@ export default function FavoritesPage() {
                 onClick={() => navigate(`/property/${l.id}`)}
               >
                 <div className="relative mb-3">
-                  <div className={`h-[220px] rounded-lg relative overflow-hidden ${l.photos?.length ? 'bg-off-white' : l.imgClass}`}>
+                  <div className="h-[220px] rounded-lg relative overflow-hidden bg-off-white">
                     {l.photos?.length ? (
                       <img src={l.photos[l.coverIndex ?? 0]} alt={l.name} className="absolute inset-0 w-full h-full object-cover" />
                     ) : null}
                     <HeartButton listingId={l.id} />
                   </div>
                 </div>
-                <p className="text-xs text-t3">{l.loc}</p>
+                <p className="text-xs text-t3">{l.location}</p>
                 <p className="text-sm font-semibold text-t1">{l.name}</p>
-                <p className="text-xs text-t3">{l.sub}</p>
+                <p className="text-xs text-t3">{l.subtitle}</p>
                 <p className="text-sm mt-1">
                   <strong className="font-semibold">${l.price}</strong>
                   <span className="text-t3"> / night</span>

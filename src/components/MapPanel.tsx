@@ -9,7 +9,7 @@ interface MapPanelProps {
   visible: boolean;
   onHighlight?: (id: number | null) => void;
   onBoundsChange?: (bounds: MapBounds) => void;
-  searchLocation?: { lat: number; lng: number } | null;
+  searchLocation?: { latitude: number; longitude: number } | null;
   onMobileClose?: () => void;
   onNavigate?: (id: number) => void;
 }
@@ -54,7 +54,7 @@ export default function MapPanel({ listings, visible, onHighlight, onBoundsChang
       popupRoot.render(<MapMarkerPopup listing={listing} />);
       popupRoots.push(popupRoot);
 
-      const marker = L.marker([listing.lat, listing.lng], { icon })
+      const marker = L.marker([listing.latitude, listing.longitude], { icon })
         .addTo(map)
         .bindPopup(popupContainer, { maxWidth: 260, closeButton: false });
 
@@ -114,7 +114,7 @@ export default function MapPanel({ listings, visible, onHighlight, onBoundsChang
   // Fly to searched location
   useEffect(() => {
     if (searchLocation && mapRef.current) {
-      mapRef.current.flyTo([searchLocation.lat, searchLocation.lng], 15, { duration: 1.0 });
+      mapRef.current.flyTo([searchLocation.latitude, searchLocation.longitude], 15, { duration: 1.0 });
     }
   }, [searchLocation]);
 

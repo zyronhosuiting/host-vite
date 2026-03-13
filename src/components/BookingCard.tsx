@@ -11,7 +11,7 @@ export default function BookingCard({ listing: l }: BookingCardProps) {
   const cleanFee   = Math.round(l.price * 0.15);
   const serviceFee = Math.round(subtotal * 0.12);
   const total      = subtotal + cleanFee + serviceFee;
-  const [checkIn, checkOut] = l.dates.split(' – ');
+  const [checkIn, checkOut] = l.availableDates.split(' – ');
 
   return (
     <div className="sticky top-[80px] bg-white border border-border rounded-2xl p-6 shadow-md">

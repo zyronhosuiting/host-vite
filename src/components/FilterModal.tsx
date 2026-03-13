@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import type { FilterState, Listing, ListingExtra } from '../types';
+import type { FilterState, Listing } from '../types';
 import { DEFAULT_FILTERS, countActive } from '../hooks/useFilter';
 import FilterSection from './FilterSection';
 import PriceStepper from './PriceStepper';
@@ -12,7 +12,6 @@ interface FilterModalProps {
   filters: FilterState;
   onChange: (next: FilterState) => void;
   listings?: Listing[];
-  extras?: Record<number, ListingExtra>;
 }
 
 // ── Static option lists ───────────────────────────────────────────────────────
@@ -89,7 +88,7 @@ function MultiChip({ options, selected, onToggle }: MultiChipProps) {
 
 // ── Main component ────────────────────────────────────────────────────────────
 
-export default function FilterModal({ open, onClose, filters, onChange, listings = [], extras = {} }: FilterModalProps) {
+export default function FilterModal({ open, onClose, filters, onChange, listings = [] }: FilterModalProps) {
   if (!open) return null;
 
   const activeCount = countActive(filters);
@@ -98,9 +97,9 @@ export default function FilterModal({ open, onClose, filters, onChange, listings
   // eslint-disable-next-line react-hooks/rules-of-hooks
   const sqftValues = useMemo(
     () => listings
-      .filter(l => extras[l.id]?.area > 0)
-      .map(l => Math.round(l.price / extras[l.id].area)),
-    [listings, extras]
+      .filter(l => l.area > 0)
+      .map(l => Math.round(l.price / l.area)),
+    [listings]
   );
 
   function toggle<K extends 'propertyType' | 'districts' | 'floorLevel' | 'leaseTerm' | 'amenities'>(
@@ -200,8 +199,8 @@ export default function FilterModal({ open, onClose, filters, onChange, listings
           <FilterSection title="睡房數目">
             <PriceStepper
               label="睡房數目"
-              value={filters.bedroomType}
-              onChange={v => onChange({ ...filters, bedroomType: v })}
+              value={filters.bedrooms}
+              onChange={v => onChange({ ...filters, bedrooms: v })}
             />
           </FilterSection>
 

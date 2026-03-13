@@ -50,7 +50,7 @@ export default function CmsPage() {
                 <tr key={l.id} className="border-b border-border last:border-0 hover:bg-off-white transition-colors">
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-3">
-                      <div className={`w-10 h-10 rounded-lg flex-shrink-0 overflow-hidden ${l.photos?.length ? 'bg-off-white' : l.imgClass}`}>
+                      <div className="w-10 h-10 rounded-lg flex-shrink-0 overflow-hidden bg-off-white">
                       {l.photos?.length ? (
                         <img src={l.photos[l.coverIndex ?? 0]} alt={l.name} className="w-full h-full object-cover" />
                       ) : null}
@@ -60,7 +60,7 @@ export default function CmsPage() {
                       </Link>
                     </div>
                   </td>
-                  <td className="px-4 py-3 text-t2 hidden md:table-cell">{cleanLoc(l.loc)}</td>
+                  <td className="px-4 py-3 text-t2 hidden md:table-cell">{cleanLoc(l.location)}</td>
                   <td className="px-4 py-3 font-semibold text-t1 hidden sm:table-cell">${l.price}</td>
                   <td className="px-4 py-3 hidden lg:table-cell">
                     {l.badge === '新上架' && isNewListing(l.listedDate) && (

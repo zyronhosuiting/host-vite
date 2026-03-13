@@ -1,4 +1,4 @@
-import type { Listing, ListingExtra, RentalTransaction, Conversation, Message } from '../types';
+import type { RentalTransaction, Conversation, Message } from '../types';
 
 // ─── Backend response types ─────────────────────────────
 
@@ -71,86 +71,13 @@ export interface BackendRentalTransaction {
 
 // ─── Mappers ────────────────────────────────────────────
 
-/** Map backend listing → frontend Listing + ListingExtra */
-export function mapListing(b: BackendListing): { listing: Listing; extra: ListingExtra } {
-  const listing: Listing = {
-    id: b.id,
-    imgClass: '',                               // no longer used for real photos
-    cats: b.categories.join(' ') || 'all',
-    loc: b.location,
-    mapLoc: b.mapLocation,
-    lat: Number(b.latitude),
-    lng: Number(b.longitude),
-    badge: b.badge ?? '',
-    badgeMod: '',                                // removed from backend
-    name: b.name,
-    sub: b.subtitle,
-    dates: b.availableDates,
-    listedDate: b.listedDate,
-    updatedDate: b.updatedDate,
-    price: b.price,
-    rating: Number(b.rating),
-    reviews: b.reviews,
-    dots: b.photos?.length ?? 0,
-    saved: false,                                // computed from favorites separately
-    color: '#5c6bc0',                            // default, no longer from backend
-    photos: b.photos ?? [],
-    coverIndex: b.coverIndex ?? undefined,
-  };
-
-  const extra: ListingExtra = {
-    area: b.area,
-    beds: b.bedrooms,
-    baths: b.bathrooms,
-    desc: b.description ?? '',
-    features: b.features ?? [],
-    propertyType: b.propertyType ?? undefined,
-    leaseTerm: b.leaseTerm ?? undefined,
-    ownerPhone: b.ownerPhone ?? undefined,
-    amenities: b.amenities ?? [],
-  };
-
-  return { listing, extra };
-}
-
-/** Map frontend Listing + ListingExtra → backend create/update DTO */
-export function toBackendListing(l: Listing, e: ListingExtra): Partial<BackendListing> {
-  return {
-    name: l.name,
-    categories: l.cats.split(' ').filter(Boolean),
-    location: l.loc,
-    mapLocation: l.mapLoc,
-    latitude: l.lat,
-    longitude: l.lng,
-    badge: l.badge,
-    subtitle: l.sub,
-    availableDates: l.dates,
-    listedDate: l.listedDate,
-    updatedDate: l.updatedDate,
-    price: l.price,
-    rating: l.rating,
-    reviews: l.reviews,
-    photos: l.photos ?? [],
-    coverIndex: l.coverIndex ?? null,
-    area: e.area,
-    bedrooms: e.beds,
-    bathrooms: e.baths,
-    description: e.desc,
-    features: e.features,
-    propertyType: e.propertyType ?? null,
-    leaseTerm: e.leaseTerm ?? null,
-    ownerPhone: e.ownerPhone ?? null,
-    amenities: e.amenities ?? [],
-  };
-}
-
 /** Map backend rental transaction → frontend RentalTransaction */
 export function mapRentalTransaction(b: BackendRentalTransaction): RentalTransaction {
   return {
     date: b.date,
     district: b.district,
     building: b.building,
-    cats: b.categories.join(' '),
+    categories: b.categories,
     unitType: b.unitType,
     area: b.area,
     monthlyRent: b.monthlyRent,

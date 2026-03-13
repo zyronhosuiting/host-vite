@@ -22,7 +22,6 @@ export default function MapMarkerPopup({ listing: l }: MapMarkerPopupProps) {
       <div style={{ position: 'relative', width: '100%', paddingTop: `${(35 / 54) * 100}%` }}>
         <PhotoCarousel
           photos={l.photos}
-          imgClass={l.imgClass}
           alt={l.name}
           coverIndex={l.coverIndex}
           style={{ position: 'absolute', inset: 0, borderRadius: '16px 16px 0 0' }}
@@ -51,10 +50,10 @@ export default function MapMarkerPopup({ listing: l }: MapMarkerPopupProps) {
           {l.name}
         </p>
         <p style={{ margin: '2px 0 0', fontSize: 14, color: '#6A6A6A', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-          {cleanLoc(l.loc)}
+          {cleanLoc(l.location)}
         </p>
         <p style={{ margin: '2px 0 0', fontSize: 11, color: '#8C8C8C', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-          {l.sub}
+          {l.subtitle}
         </p>
         <p style={{ margin: '10px 0 0', paddingTop: 10, borderTop: '1px solid #DDDDDD', fontSize: 16, fontWeight: 800, color: '#222222' }}>
           HK${l.price.toLocaleString()}

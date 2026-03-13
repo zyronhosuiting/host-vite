@@ -16,21 +16,20 @@ import { getInitials } from '../utils/getInitials';
 export default function PropertyDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { listings, extras: allExtras } = useListings();
+  const { listings } = useListings();
   const { avatarUrl } = useAvatar();
   const { user } = useAuth();
   const guestId = useMemo(() => String(Math.floor(Math.random() * 900) + 100).padStart(3, '0'), []);
   const hostName = user ? (user.name || user.email) : `用戶 ${guestId}`;
   const listing = listings.find(l => l.id === Number(id));
-  const extras  = listing ? (allExtras[listing.id] ?? { area: 400, beds: 1, baths: 1, desc: listing.sub, features: [] }) : null;
 
   useEffect(() => {
     window.scrollTo(0, 0);
     if (listing) document.title = `${listing.name} — Host Living`;
     return () => { document.title = 'Host Living'; };
-  }, [id]);
+  }, [id, listing]);
 
-  if (!listing || !extras) {
+  if (!listing) {
     return (
       <>
         <SiteHeader showCategoryBar={false} />
@@ -66,9 +65,9 @@ export default function PropertyDetailPage() {
             <div className="pb-8">
               <h1 className="text-2xl font-bold text-t1 mb-2">{listing.name}</h1>
               <div className="flex items-center gap-2 text-sm text-t2">
-                <span className="underline">{listing.loc}</span>
+                <span className="underline">{listing.location}</span>
               </div>
-              <p className="text-xs text-t3 mt-1.5">{listing.sub}</p>
+              <p className="text-xs text-t3 mt-1.5">{listing.subtitle}</p>
             </div>
 
             {/* Stats */}
@@ -76,17 +75,17 @@ export default function PropertyDetailPage() {
               <div className="grid grid-cols-3 md:grid-cols-3 gap-3 mb-6">
                 <div className="bg-off-white rounded-2xl p-4 border border-border hover:border-border-dark transition-colors">
                   <p className="text-xs text-t3 mb-1.5 uppercase tracking-wide">實用面積</p>
-                  <p className="text-2xl font-bold text-t1 leading-none">{extras.area}<span className="text-sm font-normal text-t3 ml-0.5">呎</span></p>
-                  <p className="text-sm font-semibold text-t2 mt-1.5">HK${Math.round(listing.price / extras.area)}<span className="font-normal text-t3">/呎・月</span></p>
+                  <p className="text-2xl font-bold text-t1 leading-none">{listing.area}<span className="text-sm font-normal text-t3 ml-0.5">呎</span></p>
+                  <p className="text-sm font-semibold text-t2 mt-1.5">HK${Math.round(listing.price / listing.area)}<span className="font-normal text-t3">/呎・月</span></p>
                 </div>
                 <div className="bg-off-white rounded-2xl p-4 border border-border hover:border-border-dark transition-colors">
                   <p className="text-xs text-t3 mb-1.5 uppercase tracking-wide">房間</p>
-                  <p className="text-2xl font-bold text-t1 leading-none">{extras.beds > 0 ? `${extras.beds}房` : '開放式'}</p>
-                  <p className="text-xs text-t3 mt-1.5">{extras.baths} 個浴室</p>
+                  <p className="text-2xl font-bold text-t1 leading-none">{listing.bedrooms > 0 ? `${listing.bedrooms}房` : '開放式'}</p>
+                  <p className="text-xs text-t3 mt-1.5">{listing.bathrooms} 個浴室</p>
                 </div>
                 <div className="bg-off-white rounded-2xl p-4 border border-border hover:border-border-dark transition-colors">
                   <p className="text-xs text-t3 mb-1.5 uppercase tracking-wide">租約</p>
-                  <p className="text-2xl font-bold text-t1 leading-none">{extras.leaseTerm ? extras.leaseTerm.replace('個月', '') : '12'}</p>
+                  <p className="text-2xl font-bold text-t1 leading-none">{listing.leaseTerm ? listing.leaseTerm.replace('個月', '') : '12'}</p>
                   <p className="text-xs text-t3 mt-1.5">個月租約</p>
                 </div>
               </div>
@@ -104,12 +103,12 @@ export default function PropertyDetailPage() {
                 </div>
                 <div>
                   <p className="text-sm font-semibold text-t1">{hostName}</p>
-                  <p className="text-xs text-t3">{listing.sub}</p>
+                  <p className="text-xs text-t3">{listing.subtitle}</p>
                 </div>
               </div>
 
               {/* Features */}
-              {extras.features.map((f, i) => {
+              {listing.features.map((f, i) => {
                 const [title, ...rest] = f.split(' — ');
                 return (
                   <div key={i} className="flex items-start gap-4 py-3">
@@ -130,7 +129,7 @@ export default function PropertyDetailPage() {
             {/* Description */}
             <div className="py-8">
               <h2 className="text-lg font-bold text-t1 mb-4">房源介紹</h2>
-              <p className="text-sm text-t2 leading-relaxed">{extras.desc}</p>
+              <p className="text-sm text-t2 leading-relaxed">{listing.description}</p>
             </div>
 
             {/* School nets + listing dates */}
@@ -140,14 +139,14 @@ export default function PropertyDetailPage() {
                 <div className="bg-off-white rounded-2xl p-4 border border-border">
                   <p className="text-xs text-t3 mb-1.5 uppercase tracking-wide">小學校網</p>
                   <p className="text-xl font-bold text-t1 leading-none">
-                    {PRIMARY_SCHOOL_NET[listing.mapLoc] ?? '—'}
+                    {PRIMARY_SCHOOL_NET[listing.mapLocation] ?? '—'}
                   </p>
                   <p className="text-xs text-t3 mt-1.5">教育局小學學位分配</p>
                 </div>
                 <div className="bg-off-white rounded-2xl p-4 border border-border">
                   <p className="text-xs text-t3 mb-1.5 uppercase tracking-wide">中學校網</p>
                   <p className="text-xl font-bold text-t1 leading-none">
-                    {SECONDARY_SCHOOL_NET[listing.mapLoc] ?? '—'}
+                    {SECONDARY_SCHOOL_NET[listing.mapLocation] ?? '—'}
                   </p>
                   <p className="text-xs text-t3 mt-1.5">教育局中學學位分配</p>
                 </div>
@@ -164,11 +163,11 @@ export default function PropertyDetailPage() {
             </div>
 
             {/* Amenities */}
-            {extras.amenities && extras.amenities.length > 0 && (
+            {listing.amenities && listing.amenities.length > 0 && (
               <div className="py-8">
                 <h2 className="text-lg font-bold text-t1 mb-4">設施配套</h2>
                 <AmenityGrid
-                  selected={new Set(extras.amenities)}
+                  selected={new Set(listing.amenities)}
                   onChange={() => {}}
                   readOnly
                 />
@@ -180,7 +179,7 @@ export default function PropertyDetailPage() {
               <h2 className="text-lg font-bold text-t1 mb-4">位置</h2>
               <div className="h-[280px] rounded-xl overflow-hidden border border-border mb-3" style={{ isolation: 'isolate' }}>
                 <MapContainer
-                  center={[listing.lat, listing.lng]}
+                  center={[listing.latitude, listing.longitude]}
                   zoom={14}
                   style={{ width: '100%', height: '100%' }}
                   zoomControl
@@ -192,25 +191,25 @@ export default function PropertyDetailPage() {
                     maxZoom={19}
                   />
                   <Circle
-                    center={[listing.lat, listing.lng]}
+                    center={[listing.latitude, listing.longitude]}
                     radius={300}
                     pathOptions={{ color: '#c5ff3f', fillColor: '#c5ff3f', fillOpacity: 0.15, weight: 2 }}
                   />
                 </MapContainer>
               </div>
-              <p className="text-sm font-semibold text-t1">{listing.loc}</p>
+              <p className="text-sm font-semibold text-t1">{listing.location}</p>
             </div>
 
             {/* Rental market data */}
             <div className="divide-y divide-border">
-              <RentalMarketTable district={listing.loc} cats={listing.cats} />
+              <RentalMarketTable district={listing.location} categories={listing.categories} />
             </div>
 
             {/* Similar listings */}
             {(() => {
-              const listingCats = listing.cats.split(' ');
+              const listingCategories = listing.categories;
               const similar = listings
-                .filter(l => l.id !== listing.id && l.cats.split(' ').some(c => listingCats.includes(c)))
+                .filter(l => l.id !== listing.id && l.categories.some(c => listingCategories.includes(c)))
                 .slice(0, 3);
               if (similar.length === 0) return null;
               return (
@@ -226,7 +225,7 @@ export default function PropertyDetailPage() {
 
           {/* Rental sidebar */}
           <div className="hidden lg:block">
-            <RentalCard listing={listing} extras={extras} />
+            <RentalCard listing={listing} />
           </div>
         </div>
       </div>
@@ -237,9 +236,9 @@ export default function PropertyDetailPage() {
           <p className="text-xs text-t3 truncate font-medium">{listing.name}</p>
           <p className="text-sm font-bold text-t1">HK${listing.price.toLocaleString()} <span className="font-normal text-t3">/ 月</span></p>
         </div>
-        {extras.ownerPhone && (
+        {listing.ownerPhone && (
           <a
-            href={`https://wa.me/${extras.ownerPhone.replace(/\D/g, '')}`}
+            href={`https://wa.me/${listing.ownerPhone.replace(/\D/g, '')}`}
             target="_blank"
             rel="noopener noreferrer"
             className="flex items-center gap-1.5 px-4 py-2.5 border border-[#25D366] text-[#25D366] rounded-pill text-sm font-semibold whitespace-nowrap hover:bg-[#f0fdf4] transition-colors"

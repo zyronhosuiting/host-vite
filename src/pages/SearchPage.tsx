@@ -15,35 +15,35 @@ import type { MapBounds } from '../types';
 export default function SearchPage() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  const { listings, extras } = useListings();
-  const { activeCategory, setActiveCategory, filters, setFilters, filteredListings, activeFilterCount, resetFilters } = useFilter(listings, extras);
+  const { listings } = useListings();
+  const { activeCategory, setActiveCategory, filters, setFilters, filteredListings, activeFilterCount, resetFilters } = useFilter(listings);
   // Map visible by default
   const { mapVisible, toggle: toggleMap } = useMapToggle(true);
   const [filterOpen, setFilterOpen]   = useState(false);
   const [guideVisible, setGuideVisible] = useState(false);
   const [highlightedId, setHighlightedId] = useState<number | null>(null);
   const [mapBounds, setMapBounds] = useState<MapBounds | null>(null);
-  const [searchLocation, setSearchLocation] = useState<{ lat: number; lng: number } | null>(null);
+  const [searchLocation, setSearchLocation] = useState<{ latitude: number; longitude: number } | null>(null);
 
   // Apply location from URL params (navigated from another page)
   useEffect(() => {
-    const lat = parseFloat(searchParams.get('lat') ?? '');
-    const lng = parseFloat(searchParams.get('lng') ?? '');
-    if (!isNaN(lat) && !isNaN(lng)) {
-      setSearchLocation({ lat, lng });
+    const latitude = parseFloat(searchParams.get('latitude') ?? searchParams.get('lat') ?? '');
+    const longitude = parseFloat(searchParams.get('longitude') ?? searchParams.get('lng') ?? '');
+    if (!isNaN(latitude) && !isNaN(longitude)) {
+      setSearchLocation({ latitude, longitude });
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const gridListings = (mapVisible && mapBounds)
     ? filteredListings.filter(l =>
-        l.lat >= mapBounds.south && l.lat <= mapBounds.north &&
-        l.lng >= mapBounds.west  && l.lng <= mapBounds.east
+        l.latitude >= mapBounds.south && l.latitude <= mapBounds.north &&
+        l.longitude >= mapBounds.west  && l.longitude <= mapBounds.east
       )
     : filteredListings;
 
   function handleLocationSelect(lat: number, lng: number, _label: string) {
-    setSearchLocation({ lat, lng });
+    setSearchLocation({ latitude: lat, longitude: lng });
     // Open map if it's hidden
     if (!mapVisible) toggleMap();
   }
@@ -85,7 +85,6 @@ export default function SearchPage() {
         filters={filters}
         onChange={setFilters}
         listings={listings}
-        extras={extras}
       />
 
       <SiteFooter />

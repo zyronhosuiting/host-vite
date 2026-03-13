@@ -1,25 +1,24 @@
 import { useNavigate, Link } from 'react-router-dom';
-import type { Listing, ListingExtra } from '../types';
+import type { Listing } from '../types';
 import { useAuth } from '../hooks/useAuth';
 
 interface RentalCardProps {
   listing: Listing;
-  extras: ListingExtra;
 }
 
-export default function RentalCard({ listing: l, extras }: RentalCardProps) {
+export default function RentalCard({ listing: l }: RentalCardProps) {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const phone = extras.ownerPhone ?? '';
+  const phone = l.ownerPhone ?? '';
   const whatsappUrl = phone ? `https://wa.me/${phone.replace(/\D/g, '')}` : null;
   const loggedIn = !!user;
 
   const infoRows = [
-    { label: '物業類型', value: extras.propertyType || '私人住宅' },
-    { label: '實用面積', value: `${extras.area} 呎` },
-    { label: '房間',     value: extras.beds > 0 ? `${extras.beds} 房 ${extras.baths} 廁` : `開放式 · ${extras.baths} 廁` },
-    { label: '地區',     value: l.loc },
-    { label: '租約',     value: extras.leaseTerm || '12 個月' },
+    { label: '物業類型', value: l.propertyType || '私人住宅' },
+    { label: '實用面積', value: `${l.area} 呎` },
+    { label: '房間',     value: l.bedrooms > 0 ? `${l.bedrooms} 房 ${l.bathrooms} 廁` : `開放式 · ${l.bathrooms} 廁` },
+    { label: '地區',     value: l.location },
+    { label: '租約',     value: l.leaseTerm || '12 個月' },
   ];
 
   return (
@@ -30,11 +29,11 @@ export default function RentalCard({ listing: l, extras }: RentalCardProps) {
         <div className="grid grid-cols-2 gap-2 mb-4 pb-4 border-b border-border">
           <div>
             <p className="text-xs text-t3 mb-1">實用面積</p>
-            <p className="text-xl font-bold text-t1 leading-none">{extras.area}<span className="text-sm font-normal text-t3 ml-0.5">呎</span></p>
+            <p className="text-xl font-bold text-t1 leading-none">{l.area}<span className="text-sm font-normal text-t3 ml-0.5">呎</span></p>
           </div>
           <div>
             <p className="text-xs text-t3 mb-1">平均呎價</p>
-            <p className="text-xl font-bold text-t1 leading-none">${Math.round(l.price / extras.area)}<span className="text-sm font-normal text-t3 ml-0.5">/呎</span></p>
+            <p className="text-xl font-bold text-t1 leading-none">${Math.round(l.price / l.area)}<span className="text-sm font-normal text-t3 ml-0.5">/呎</span></p>
           </div>
         </div>
         <div className="text-2xl font-bold text-t1 leading-none">HK${l.price.toLocaleString()}</div>
