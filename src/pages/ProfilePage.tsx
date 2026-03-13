@@ -83,7 +83,7 @@ export default function ProfilePage() {
 
   function field(key: keyof ProfileData) {
     return {
-      value: data[key],
+      value: data[key] ?? '',
       readOnly: !editMode,
       onChange: (e: React.ChangeEvent<HTMLInputElement>) =>
         setDraft(prev => ({ ...prev, [key]: e.target.value })),

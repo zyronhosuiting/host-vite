@@ -100,7 +100,7 @@ function relativeTime(dateStr: string): string {
 }
 
 /** Map backend conversation → frontend Conversation */
-export function mapConversation(b: BackendConversation, currentUserId: number): Conversation {
+export function mapConversation(b: BackendConversation, _currentUserId: number): Conversation {
   return {
     id: b.id,
     name: b.participantName,

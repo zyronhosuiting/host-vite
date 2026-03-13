@@ -2,7 +2,7 @@ import { useState } from 'react';
 
 interface PhotoCarouselProps {
   photos?: string[];
-  imgClass: string;
+  imgClass?: string;
   alt: string;
   coverIndex?: number;
   className?: string;
@@ -12,7 +12,7 @@ interface PhotoCarouselProps {
 
 export default function PhotoCarousel({
   photos,
-  imgClass,
+  imgClass = '',
   alt,
   coverIndex = 0,
   className = '',
