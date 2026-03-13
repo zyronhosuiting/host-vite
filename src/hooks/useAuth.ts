@@ -1,34 +1,22 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
+import { api, setToken, clearToken, getToken } from '../api/client';
 
 const SESSION_CHANGE = 'hl_session_change';
+const SESSION_KEY = 'hl_session';
 
-export type AuthProvider = 'email' | 'google';
+export type AuthProvider = 'email';
 
 export interface AuthUser {
+  id: number;
   email: string;
   name: string;
   provider: AuthProvider;
 }
 
-interface StoredUser {
-  email: string;
-  name: string;
-  passwordHash: string; // base64 of password (demo only — no real hashing)
-}
-
-const SESSION_KEY = 'hl_session';
-const USERS_KEY   = 'hl_users';
+export type AuthError = 'email_taken' | 'invalid_credentials' | 'email_not_found' | 'unknown';
 
 function readSession(): AuthUser | null {
   try { return JSON.parse(localStorage.getItem(SESSION_KEY) ?? 'null'); } catch { return null; }
-}
-
-function readUsers(): StoredUser[] {
-  try { return JSON.parse(localStorage.getItem(USERS_KEY) ?? '[]'); } catch { return []; }
-}
-
-function writeUsers(users: StoredUser[]) {
-  localStorage.setItem(USERS_KEY, JSON.stringify(users));
 }
 
 function writeSession(user: AuthUser | null) {
@@ -36,10 +24,6 @@ function writeSession(user: AuthUser | null) {
   else localStorage.removeItem(SESSION_KEY);
   window.dispatchEvent(new CustomEvent(SESSION_CHANGE));
 }
-
-function encode(pw: string) { return btoa(unescape(encodeURIComponent(pw))); }
-
-export type AuthError = 'email_taken' | 'invalid_credentials' | 'email_not_found';
 
 export function useAuth() {
   const [user, setUser] = useState<AuthUser | null>(readSession);
@@ -51,47 +35,90 @@ export function useAuth() {
     return () => window.removeEventListener(SESSION_CHANGE, onSessionChange);
   }, []);
 
-  function signUp(email: string, password: string, name: string): AuthError | null {
-    const users = readUsers();
-    if (users.some(u => u.email.toLowerCase() === email.toLowerCase())) return 'email_taken';
-    const newUser: StoredUser = { email: email.toLowerCase(), name, passwordHash: encode(password) };
-    writeUsers([...users, newUser]);
-    const session: AuthUser = { email: email.toLowerCase(), name, provider: 'email' };
-    writeSession(session);
-    setUser(session);
-    return null;
-  }
+  // On mount, if we have a token but no session, try to restore from /auth/me
+  useEffect(() => {
+    if (getToken() && !readSession()) {
+      api.get('/auth/me').then(({ data }) => {
+        const session: AuthUser = {
+          id: data.id,
+          email: data.email,
+          name: data.name,
+          provider: data.provider,
+        };
+        writeSession(session);
+        setUser(session);
+      }).catch(() => {
+        clearToken();
+      });
+    }
+  }, []);
 
-  function signIn(email: string, password: string): AuthError | null {
-    const users = readUsers();
-    const found = users.find(u => u.email === email.toLowerCase());
-    if (!found) return 'email_not_found';
-    if (found.passwordHash !== encode(password)) return 'invalid_credentials';
-    const session: AuthUser = { email: found.email, name: found.name, provider: 'email' };
-    writeSession(session);
-    setUser(session);
-    return null;
-  }
+  const signUp = useCallback(async (email: string, password: string, name: string): Promise<AuthError | null> => {
+    try {
+      const { data } = await api.post('/auth/signup', { email, password, name });
+      setToken(data.accessToken);
+      const session: AuthUser = {
+        id: data.user.id,
+        email: data.user.email,
+        name: data.user.name,
+        provider: data.user.provider,
+      };
+      writeSession(session);
+      setUser(session);
+      return null;
+    } catch (err: any) {
+      const status = err.response?.status;
+      if (status === 409) return 'email_taken';
+      return 'unknown';
+    }
+  }, []);
 
-  function signInWithGoogle() {
-    // Demo: simulate Google OAuth with a mock account
-    const session: AuthUser = { email: 'garywong@gmail.com', name: 'Gary Wong', provider: 'google' };
-    writeSession(session);
-    setUser(session);
-  }
+  const signIn = useCallback(async (email: string, password: string): Promise<AuthError | null> => {
+    try {
+      const { data } = await api.post('/auth/signin', { email, password });
+      setToken(data.accessToken);
+      const session: AuthUser = {
+        id: data.user.id,
+        email: data.user.email,
+        name: data.user.name,
+        provider: data.user.provider,
+      };
+      writeSession(session);
+      setUser(session);
+      return null;
+    } catch (err: any) {
+      const msg = err.response?.data?.message ?? '';
+      if (msg.includes('找不到')) return 'email_not_found';
+      if (msg.includes('密碼')) return 'invalid_credentials';
+      return 'unknown';
+    }
+  }, []);
 
-  function signOut() {
+  const signOut = useCallback(() => {
+    clearToken();
     writeSession(null);
     setUser(null);
-  }
+  }, []);
 
-  function updateName(name: string) {
-    const current = readSession();
-    if (!current) return;
-    const updated: AuthUser = { ...current, name };
-    writeSession(updated);
-    setUser(updated);
-  }
+  const updateName = useCallback(async (name: string) => {
+    try {
+      await api.patch('/profile', { name });
+      const current = readSession();
+      if (current) {
+        const updated: AuthUser = { ...current, name };
+        writeSession(updated);
+        setUser(updated);
+      }
+    } catch {
+      // fallback: update locally
+      const current = readSession();
+      if (current) {
+        const updated: AuthUser = { ...current, name };
+        writeSession(updated);
+        setUser(updated);
+      }
+    }
+  }, []);
 
-  return { user, signUp, signIn, signInWithGoogle, signOut, updateName };
+  return { user, signUp, signIn, signOut, updateName };
 }

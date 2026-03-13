@@ -1,66 +1,78 @@
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
+import { api } from '../api/client';
+import { mapListing, toBackendListing, type BackendListing } from '../api/mappers';
 import { LISTINGS } from '../data/listings';
 import detailExtras from '../data/detailExtras';
 import type { Listing, ListingExtra } from '../types';
 
-const LS_LISTINGS = 'hl_listings';
-const LS_EXTRAS   = 'hl_extras';
-const LS_VERSION  = 'hl_version';
-const DATA_VERSION = '3'; // bump when default data changes
-
-function loadListings(): Listing[] {
-  try {
-    if (localStorage.getItem(LS_VERSION) !== DATA_VERSION) {
-      localStorage.removeItem(LS_LISTINGS);
-      localStorage.removeItem(LS_EXTRAS);
-      localStorage.setItem(LS_VERSION, DATA_VERSION);
-    }
-    const raw = localStorage.getItem(LS_LISTINGS);
-    return raw ? (JSON.parse(raw) as Listing[]) : LISTINGS;
-  } catch {
-    return LISTINGS;
-  }
-}
-
-function loadExtras(): Record<number, ListingExtra> {
-  try {
-    const raw = localStorage.getItem(LS_EXTRAS);
-    return raw ? (JSON.parse(raw) as Record<number, ListingExtra>) : detailExtras;
-  } catch {
-    return detailExtras;
-  }
-}
-
 export function useListings() {
-  const [listings, setListings] = useState<Listing[]>(loadListings);
-  const [extras, setExtras] = useState<Record<number, ListingExtra>>(loadExtras);
+  const [listings, setListings] = useState<Listing[]>(LISTINGS);
+  const [extras, setExtras] = useState<Record<number, ListingExtra>>(detailExtras);
+  const [loaded, setLoaded] = useState(false);
 
-  function persistListings(next: Listing[]) {
-    setListings(next);
-    localStorage.setItem(LS_LISTINGS, JSON.stringify(next));
-  }
+  // Fetch listings from backend on mount
+  useEffect(() => {
+    let cancelled = false;
 
-  function persistExtras(next: Record<number, ListingExtra>) {
-    setExtras(next);
-    localStorage.setItem(LS_EXTRAS, JSON.stringify(next));
-  }
+    api.get<BackendListing[]>('/listings')
+      .then(({ data }) => {
+        if (cancelled) return;
+        const mapped = data.map(mapListing);
+        setListings(mapped.map((m) => m.listing));
+        const extrasMap: Record<number, ListingExtra> = {};
+        mapped.forEach((m) => { extrasMap[m.listing.id] = m.extra; });
+        setExtras(extrasMap);
+        setLoaded(true);
+      })
+      .catch(() => {
+        // Fallback to local data if API is unavailable
+        if (!cancelled) setLoaded(true);
+      });
 
-  function updateListing(listing: Listing, extra: ListingExtra) {
-    persistListings(listings.map(l => l.id === listing.id ? listing : l));
-    persistExtras({ ...extras, [listing.id]: extra });
-  }
+    return () => { cancelled = true; };
+  }, []);
 
-  function createListing(listing: Listing, extra: ListingExtra) {
-    persistListings([...listings, listing]);
-    persistExtras({ ...extras, [listing.id]: extra });
-  }
+  const updateListing = useCallback(async (listing: Listing, extra: ListingExtra) => {
+    const dto = toBackendListing(listing, extra);
+    try {
+      const { data } = await api.patch<BackendListing>(`/listings/${listing.id}`, dto);
+      const { listing: updated, extra: updatedExtra } = mapListing(data);
+      setListings((prev) => prev.map((l) => (l.id === updated.id ? updated : l)));
+      setExtras((prev) => ({ ...prev, [updated.id]: updatedExtra }));
+    } catch {
+      // Fallback: update locally
+      setListings((prev) => prev.map((l) => (l.id === listing.id ? listing : l)));
+      setExtras((prev) => ({ ...prev, [listing.id]: extra }));
+    }
+  }, []);
 
-  function deleteListing(id: number) {
-    persistListings(listings.filter(l => l.id !== id));
-    const next = { ...extras };
-    delete next[id];
-    persistExtras(next);
-  }
+  const createListing = useCallback(async (listing: Listing, extra: ListingExtra) => {
+    const dto = toBackendListing(listing, extra);
+    try {
+      const { data } = await api.post<BackendListing>('/listings', dto);
+      const { listing: created, extra: createdExtra } = mapListing(data);
+      setListings((prev) => [...prev, created]);
+      setExtras((prev) => ({ ...prev, [created.id]: createdExtra }));
+    } catch {
+      // Fallback: create locally
+      setListings((prev) => [...prev, listing]);
+      setExtras((prev) => ({ ...prev, [listing.id]: extra }));
+    }
+  }, []);
 
-  return { listings, extras, updateListing, createListing, deleteListing };
+  const deleteListing = useCallback(async (id: number) => {
+    try {
+      await api.delete(`/listings/${id}`);
+    } catch {
+      // continue with local delete even if API fails
+    }
+    setListings((prev) => prev.filter((l) => l.id !== id));
+    setExtras((prev) => {
+      const next = { ...prev };
+      delete next[id];
+      return next;
+    });
+  }, []);
+
+  return { listings, extras, loaded, updateListing, createListing, deleteListing };
 }

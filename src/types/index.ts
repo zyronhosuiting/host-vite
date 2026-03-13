@@ -99,6 +99,5 @@ export interface ProfileData {
   name: string;
   email: string;
   phone: string;
-  address: string;
   about: string;
 }

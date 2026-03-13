@@ -1,9 +1,10 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import SiteHeader from '../components/SiteHeader';
 import ProfileField from '../components/ProfileField';
 import Toast from '../components/Toast';
 import { useAvatar } from '../hooks/useAvatar';
 import { useAuth } from '../hooks/useAuth';
+import { api, getToken } from '../api/client';
 import type { ProfileData } from '../types';
 import { getInitials } from '../utils/getInitials';
 
@@ -22,7 +23,6 @@ export default function ProfilePage() {
     name:    user?.name  ?? '',
     email:   user?.email ?? '',
     phone:   '',
-    address: '',
     about:   '',
   };
 
@@ -40,6 +40,21 @@ export default function ProfilePage() {
 
   const fileRef = useRef<HTMLInputElement>(null);
 
+  // Fetch profile from API
+  useEffect(() => {
+    if (!getToken()) return;
+    api.get('/profile').then(({ data }) => {
+      const p: ProfileData = {
+        name: data.name ?? '',
+        email: data.email ?? '',
+        phone: data.phone ?? '',
+        about: data.about ?? '',
+      };
+      setProfile(p);
+      setDraft(p);
+    }).catch(() => { /* fallback to local */ });
+  }, []);
+
   function toast(msg: string) {
     setToastMsg(msg);
     setToastVisible(true);
@@ -48,7 +63,16 @@ export default function ProfilePage() {
 
   function startEdit() { setDraft({ ...profile }); setEditMode(true); }
   function cancelEdit() { setDraft({ ...profile }); setEditMode(false); }
-  function saveEdit() {
+  async function saveEdit() {
+    // Save to API
+    try {
+      await api.patch('/profile', {
+        name: draft.name,
+        phone: draft.phone,
+        about: draft.about,
+      });
+    } catch { /* fallback to local */ }
+
     setProfile({ ...draft });
     if (draft.name !== profile.name) updateName(draft.name);
     setEditMode(false);
@@ -195,7 +219,6 @@ export default function ProfilePage() {
               <p className="text-sm text-t2 px-3 py-2">{profile.email}</p>
             </div>
             <ProfileField label="電話號碼" type="tel"   {...field('phone')} />
-            <ProfileField label="地址"   type="text"  {...field('address')} />
           </div>
 
           {/* Account info */}
@@ -224,8 +247,8 @@ export default function ProfilePage() {
           )}
         </div>
 
-        {/* ── Password card — hidden for Google accounts ── */}
-        {user?.provider !== 'google' && <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
+        {/* ── Password card ── */}
+        <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
           <div className="flex items-start justify-between px-6 pt-6 pb-4 border-b border-border">
             <div>
               <h2 className="text-lg font-bold text-t1">密碼設定</h2>
@@ -305,7 +328,7 @@ export default function ProfilePage() {
               </div>
             </div>
           )}
-        </div>}
+        </div>
 
       </div>
 
