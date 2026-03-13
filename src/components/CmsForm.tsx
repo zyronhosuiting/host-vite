@@ -159,6 +159,7 @@ export default function CmsForm({ listing, onListingChange, onSave, onCancel }: 
       <section className="bg-white rounded-xl border border-border p-6">
         <h2 className="text-sm font-bold text-t1 mb-4">相片</h2>
         <PhotoUploader
+          listingId={listing.id}
           photos={listing.photos ?? []}
           coverIndex={listing.coverIndex ?? 0}
           onPhotosChange={(photos, coverIndex) => onListingChange({ ...listing, photos, coverIndex })}

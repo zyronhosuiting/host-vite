@@ -1,9 +1,35 @@
 import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useListings } from '../hooks/useListings';
+import { api, getToken } from '../api/client';
 import SiteHeader from '../components/SiteHeader';
 import CmsForm from '../components/CmsForm';
 import type { Listing } from '../types';
+
+/**
+ * After creating a new listing, upload data-URL photos to R2.
+ * The listing was created with photos:[] on the backend;
+ * each addPhoto call appends the R2 URL to the DB photos array.
+ */
+async function uploadPendingPhotos(listingId: number, photos: string[]) {
+  if (!getToken()) return;
+  const dataUrlPhotos = photos.filter(p => p.startsWith('data:'));
+  if (dataUrlPhotos.length === 0) return;
+
+  try {
+    for (const dataUrl of dataUrlPhotos) {
+      const blob = await (await fetch(dataUrl)).blob();
+      const file = new File([blob], 'photo.jpg', { type: blob.type || 'image/jpeg' });
+      const formData = new FormData();
+      formData.append('file', file);
+      await api.post(`/listings/${listingId}/photos`, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+    }
+  } catch (err) {
+    console.error('Failed to upload pending photos after create', err);
+  }
+}
 
 const DEFAULT_LISTING: Omit<Listing, 'id'> = {
   categories: ['all'], location: '', mapLocation: '', latitude: 22.3193, longitude: 114.1694,
@@ -24,15 +50,19 @@ export default function CmsEditPage() {
   const numId = Number(id);
 
   const [listing, setListing] = useState<Listing>(() => {
-    if (isNew) return { ...DEFAULT_LISTING, id: Date.now() };
+    if (isNew) return { ...DEFAULT_LISTING, id: 0 };
     return { ...DEFAULT_LISTING, ...listings.find(l => l.id === numId), id: numId };
   });
 
-  function handleSave() {
+  async function handleSave() {
     if (!listing.name.trim()) return alert('請輸入房源名稱');
     if (!listing.photos || listing.photos.length === 0) return alert('請至少上傳 1 張相片');
     if (isNew) {
-      createListing(listing);
+      // Create listing first, then upload any data-URL photos to R2
+      const created = await createListing(listing);
+      if (created && created.id) {
+        await uploadPendingPhotos(created.id, listing.photos);
+      }
     } else {
       updateListing(listing);
     }

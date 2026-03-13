@@ -1,45 +1,34 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import SiteHeader from '../components/SiteHeader';
 import ConversationList from '../components/ConversationList';
 import ChatPanel from '../components/ChatPanel';
-import type { Conversation } from '../types';
+import { api, getToken } from '../api/client';
+import { useAuth } from '../hooks/useAuth';
+import { mapConversation, mapMessage } from '../api/mappers';
+import type { BackendConversation, BackendMessage } from '../api/mappers';
+import type { Conversation, Message } from '../types';
 
-const INITIAL_CONVERSATIONS: Conversation[] = [
+const FALLBACK_CONVERSATIONS: Conversation[] = [
   {
-    id: 1,
-    name: '張先生',
-    property: '中環豪華公寓',
-    lastMessage: '請問這個單位還有嗎？',
-    time: '10分鐘前',
-    unread: 2,
-    avatar: '👨',
+    id: 1, name: '張先生', property: '中環豪華公寓',
+    lastMessage: '請問這個單位還有嗎？', time: '10分鐘前', unread: 2, avatar: '👨',
     messages: [
       { from: 'them', text: '你好，請問呢個單位係咪仲有？', time: '14:22' },
       { from: 'them', text: '請問這個單位還有嗎？', time: '14:23' },
     ],
   },
   {
-    id: 2,
-    name: '李小姐',
-    property: '銅鑼灣兩房單位',
-    lastMessage: '好的，謝謝你的回覆',
-    time: '1小時前',
-    unread: 0,
-    avatar: '👩',
+    id: 2, name: '李小姐', property: '銅鑼灣兩房單位',
+    lastMessage: '好的，謝謝你的回覆', time: '1小時前', unread: 0, avatar: '👩',
     messages: [
-      { from: 'me',   text: '你好！呢個單位係 2 月 15 號起租，月租 $18,000。', time: '12:05' },
+      { from: 'me', text: '你好！呢個單位係 2 月 15 號起租，月租 $18,000。', time: '12:05' },
       { from: 'them', text: '好的，謝謝你的回覆', time: '12:10' },
     ],
   },
   {
-    id: 3,
-    name: '王先生',
-    property: '太子精品一房',
-    lastMessage: '可以預約睇樓嗎？',
-    time: '昨天',
-    unread: 1,
-    avatar: '🧑',
+    id: 3, name: '王先生', property: '太子精品一房',
+    lastMessage: '可以預約睇樓嗎？', time: '昨天', unread: 1, avatar: '🧑',
     messages: [
       { from: 'them', text: '你好，我對呢個單位有興趣！', time: '昨天 18:30' },
       { from: 'them', text: '可以預約睇樓嗎？', time: '昨天 18:31' },
@@ -49,47 +38,106 @@ const INITIAL_CONVERSATIONS: Conversation[] = [
 
 export default function MessagesPage() {
   const [searchParams] = useSearchParams();
-  const [conversations, setConversations] = useState<Conversation[]>(INITIAL_CONVERSATIONS);
+  const { user } = useAuth();
+  const [conversations, setConversations] = useState<Conversation[]>([]);
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [mobileView, setMobileView] = useState<'list' | 'chat'>('list');
+  const [loadedMessages, setLoadedMessages] = useState<Record<number, boolean>>({});
 
   const selected = conversations.find(c => c.id === selectedId) ?? null;
+
+  // Fetch conversations from backend (or fallback)
+  useEffect(() => {
+    if (!getToken() || !user) {
+      setConversations(FALLBACK_CONVERSATIONS);
+      return;
+    }
+
+    api.get<BackendConversation[]>('/messages/conversations')
+      .then(({ data }) => {
+        const mapped = data.map(c => mapConversation(c, user.id));
+        setConversations(mapped.length > 0 ? mapped : FALLBACK_CONVERSATIONS);
+      })
+      .catch(() => setConversations(FALLBACK_CONVERSATIONS));
+  }, [user]);
+
+  // Load messages when a conversation is selected
+  const loadMessages = useCallback(async (convId: number) => {
+    if (!getToken() || !user || loadedMessages[convId]) return;
+
+    try {
+      const { data } = await api.get<BackendMessage[]>(`/messages/conversations/${convId}/messages`);
+      const messages = data.map(m => mapMessage(m, user.id));
+      setConversations(prev => prev.map(c =>
+        c.id === convId ? { ...c, messages } : c
+      ));
+      setLoadedMessages(prev => ({ ...prev, [convId]: true }));
+    } catch {
+      // keep existing messages
+    }
+  }, [user, loadedMessages]);
 
   // Auto-open conversation from property detail "聯絡房東" button
   useEffect(() => {
     const listingId = Number(searchParams.get('listingId'));
-    const property  = searchParams.get('property') ?? '';
-    const host      = searchParams.get('host') ?? '房東';
+    const property = searchParams.get('property') ?? '';
     if (!listingId) return;
 
-    setConversations(prev => {
-      const existing = prev.find(c => c.listingId === listingId);
-      if (existing) {
-        setSelectedId(existing.id);
-        return prev.map(c => c.id === existing.id ? { ...c, unread: 0 } : c);
-      }
-      // Create a new conversation with an opening message from the host
+    // Check if conversation for this listing already exists
+    const existing = conversations.find(c => c.listingId === listingId);
+    if (existing) {
+      setSelectedId(existing.id);
+      setConversations(prev => prev.map(c => c.id === existing.id ? { ...c, unread: 0 } : c));
+      return;
+    }
+
+    // Create a new conversation via API (or locally)
+    const openingText = `你好，我對「${property}」有興趣，請問仲有冇呢個單位？`;
+
+    if (getToken()) {
+      api.post<BackendConversation>('/messages/conversations', {
+        participantName: '房東',
+        property,
+        listingId,
+        avatar: '🏠',
+      }).then(async ({ data: conv }) => {
+        // Send opening message
+        try {
+          await api.post(`/messages/conversations/${conv.id}/messages`, { text: openingText });
+        } catch { /* ignore */ }
+
+        const mapped: Conversation = user
+          ? mapConversation(conv, user.id)
+          : { id: conv.id, name: '房東', property, lastMessage: openingText, time: '剛才', unread: 0, avatar: '🏠', messages: [], listingId };
+
+        mapped.messages = [{ from: 'me', text: openingText, time: '剛才' }];
+        mapped.lastMessage = openingText;
+
+        setConversations(prev => [mapped, ...prev]);
+        setSelectedId(conv.id);
+      }).catch(() => {
+        // Fallback: create locally
+        const newId = Date.now();
+        const newConv: Conversation = {
+          id: newId, name: '房東', property,
+          lastMessage: openingText, time: '剛才', unread: 0, avatar: '🏠',
+          listingId,
+          messages: [{ from: 'me', text: openingText, time: '剛才' }],
+        };
+        setConversations(prev => [newConv, ...prev]);
+        setSelectedId(newId);
+      });
+    } else {
       const newId = Date.now();
       const newConv: Conversation = {
-        id: newId,
-        name: '房東',
-        property,
-        lastMessage: `你好，我對「${property}」有興趣，請問仲有冇呢個單位？`,
-        time: '剛才',
-        unread: 0,
-        avatar: '🏠',
+        id: newId, name: '房東', property,
+        lastMessage: openingText, time: '剛才', unread: 0, avatar: '🏠',
         listingId,
-        messages: [
-          {
-            from: 'me',
-            text: `你好，我對「${property}」有興趣，請問仲有冇呢個單位？`,
-            time: '剛才',
-          },
-        ],
+        messages: [{ from: 'me', text: openingText, time: '剛才' }],
       };
+      setConversations(prev => [newConv, ...prev]);
       setSelectedId(newId);
-      return [newConv, ...prev];
-    });
+    }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams]);
 
@@ -97,17 +145,29 @@ export default function MessagesPage() {
     setConversations(prev => prev.map(c => c.id === id ? { ...c, unread: 0 } : c));
     setSelectedId(id);
     setMobileView('chat');
+    loadMessages(id);
   }
 
   function handleSend(convId: number, text: string, imageUrl?: string) {
+    const newMsg: Message = { from: 'me', text, time: '剛才', imageUrl };
+
+    // Optimistic update
     setConversations(prev => prev.map(c => {
       if (c.id !== convId) return c;
       return {
         ...c,
         lastMessage: imageUrl ? '📷 相片' : text,
-        messages: [...c.messages, { from: 'me', text, time: '剛才', imageUrl }],
+        messages: [...c.messages, newMsg],
       };
     }));
+
+    // Send to backend
+    if (getToken()) {
+      api.post(`/messages/conversations/${convId}/messages`, {
+        text,
+        imageUrl,
+      }).catch(() => { /* already shown optimistically */ });
+    }
   }
 
   return (

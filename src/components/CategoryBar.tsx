@@ -1,7 +1,8 @@
-import { CATEGORIES } from '../data/listings';
+import type { Category } from '../types';
 import CategoryItem from './CategoryItem';
 
 interface CategoryBarProps {
+  categories: Category[];
   activeCategory: string;
   onCategoryChange: (key: string) => void;
   mapVisible: boolean;
@@ -11,6 +12,7 @@ interface CategoryBarProps {
 }
 
 export default function CategoryBar({
+  categories,
   activeCategory,
   onCategoryChange,
   mapVisible,
@@ -21,7 +23,7 @@ export default function CategoryBar({
   return (
     <div className="border-t border-border bg-white flex items-center gap-4 px-3 sm:px-6 h-[72px] sm:h-[68px]">
       <div id="cat-strip" className="flex items-center gap-0.5 sm:gap-1 overflow-x-auto scrollbar-none flex-1">
-        {CATEGORIES.map(cat => (
+        {categories.map(cat => (
           <CategoryItem
             key={cat.key}
             cat={cat}

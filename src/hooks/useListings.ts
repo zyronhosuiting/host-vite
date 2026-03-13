@@ -35,13 +35,17 @@ export function useListings() {
     }
   }, []);
 
-  const createListing = useCallback(async (listing: Listing) => {
+  const createListing = useCallback(async (listing: Listing): Promise<Listing | null> => {
     try {
-      const { data } = await api.post<Listing>('/listings', listing);
+      // Send photos:[] so data URLs don't get stored in the DB;
+      // photos are uploaded separately to R2 after creation.
+      const { data } = await api.post<Listing>('/listings', { ...listing, photos: [] });
       setListings((prev) => [...prev, data]);
+      return data;
     } catch {
       // Fallback: create locally
       setListings((prev) => [...prev, listing]);
+      return listing;
     }
   }, []);
 

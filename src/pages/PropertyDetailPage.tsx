@@ -1,9 +1,10 @@
 import { useParams, useNavigate } from 'react-router-dom';
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { MapContainer, TileLayer, Circle } from 'react-leaflet';
 import { useListings } from '../hooks/useListings';
 import { useAvatar } from '../hooks/useAvatar';
 import { useAuth } from '../hooks/useAuth';
+import { api } from '../api/client';
 import SiteHeader from '../components/SiteHeader';
 import GalleryGrid from '../components/GalleryGrid';
 import RentalCard from '../components/RentalCard';
@@ -22,6 +23,28 @@ export default function PropertyDetailPage() {
   const guestId = useMemo(() => String(Math.floor(Math.random() * 900) + 100).padStart(3, '0'), []);
   const hostName = user ? (user.name || user.email) : `用戶 ${guestId}`;
   const listing = listings.find(l => l.id === Number(id));
+
+  // Fetch school nets from backend (with local fallback)
+  const [schoolNet, setSchoolNet] = useState<{ primarySchoolNet: string; secondarySchoolNet: string } | null>(null);
+
+  useEffect(() => {
+    if (!listing) return;
+    let cancelled = false;
+
+    api.get('/reference-data/school-nets', { params: { mapLocation: listing.mapLocation } })
+      .then(({ data }) => {
+        if (!cancelled && data) {
+          setSchoolNet(data);
+        }
+      })
+      .catch(() => { /* use local fallback below */ });
+
+    return () => { cancelled = true; };
+  }, [listing]);
+
+  // Resolve school net — prefer API data, fallback to local
+  const primaryNet = schoolNet?.primarySchoolNet ?? (listing ? PRIMARY_SCHOOL_NET[listing.mapLocation] : undefined) ?? '—';
+  const secondaryNet = schoolNet?.secondarySchoolNet ?? (listing ? SECONDARY_SCHOOL_NET[listing.mapLocation] : undefined) ?? '—';
 
   useEffect(() => {
     window.scrollTo(0, 0);
@@ -139,14 +162,14 @@ export default function PropertyDetailPage() {
                 <div className="bg-off-white rounded-2xl p-4 border border-border">
                   <p className="text-xs text-t3 mb-1.5 uppercase tracking-wide">小學校網</p>
                   <p className="text-xl font-bold text-t1 leading-none">
-                    {PRIMARY_SCHOOL_NET[listing.mapLocation] ?? '—'}
+                    {primaryNet}
                   </p>
                   <p className="text-xs text-t3 mt-1.5">教育局小學學位分配</p>
                 </div>
                 <div className="bg-off-white rounded-2xl p-4 border border-border">
                   <p className="text-xs text-t3 mb-1.5 uppercase tracking-wide">中學校網</p>
                   <p className="text-xl font-bold text-t1 leading-none">
-                    {SECONDARY_SCHOOL_NET[listing.mapLocation] ?? '—'}
+                    {secondaryNet}
                   </p>
                   <p className="text-xs text-t3 mt-1.5">教育局中學學位分配</p>
                 </div>

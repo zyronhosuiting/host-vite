@@ -8,6 +8,7 @@ import CategoryBar from './CategoryBar';
 import { useScrollShadow } from '../hooks/useScrollShadow';
 import { useAvatar } from '../hooks/useAvatar';
 import { useAuth } from '../hooks/useAuth';
+import { useCategories } from '../hooks/useCategories';
 import { getInitials } from '../utils/getInitials';
 
 interface SiteHeaderProps {
@@ -40,6 +41,7 @@ export default function SiteHeader({
   const navigate = useNavigate();
   const { avatarUrl } = useAvatar();
   const { user } = useAuth();
+  const categories = useCategories();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const mobileMenuRef = useRef<HTMLDivElement>(null);
 
@@ -137,6 +139,7 @@ export default function SiteHeader({
 
       {showCategoryBar && (
         <CategoryBar
+          categories={categories}
           activeCategory={props.activeCategory ?? ''}
           onCategoryChange={props.onCategoryChange ?? noop}
           mapVisible={mapVisible}

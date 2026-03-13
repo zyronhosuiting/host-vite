@@ -1,43 +1,65 @@
-import { useRef } from 'react';
+import { useRef, useState } from 'react';
+import { api, getToken } from '../api/client';
 
 interface PhotoUploaderProps {
+  listingId?: number;
   photos: string[];
   coverIndex: number;
   onPhotosChange: (photos: string[], coverIndex: number) => void;
 }
 
-async function compressImage(file: File): Promise<string> {
-  return new Promise(resolve => {
-    const img = new Image();
-    const url = URL.createObjectURL(file);
-    img.onload = () => {
-      URL.revokeObjectURL(url);
-      const maxDim = 1200;
-      const scale = Math.min(1, maxDim / Math.max(img.width, img.height));
-      const w = Math.round(img.width * scale);
-      const h = Math.round(img.height * scale);
-      const canvas = document.createElement('canvas');
-      canvas.width = w;
-      canvas.height = h;
-      canvas.getContext('2d')!.drawImage(img, 0, 0, w, h);
-      resolve(canvas.toDataURL('image/jpeg', 0.82));
-    };
-    img.src = url;
-  });
-}
-
-export default function PhotoUploader({ photos, coverIndex, onPhotosChange }: PhotoUploaderProps) {
+export default function PhotoUploader({ listingId, photos, coverIndex, onPhotosChange }: PhotoUploaderProps) {
   const inputRef = useRef<HTMLInputElement>(null);
+  const [uploading, setUploading] = useState(false);
 
   async function handleFiles(files: FileList) {
     const slots = 8 - photos.length;
-    const compressed = await Promise.all(Array.from(files).slice(0, slots).map(compressImage));
-    onPhotosChange([...photos, ...compressed], coverIndex);
+    const toUpload = Array.from(files).slice(0, slots);
+    if (toUpload.length === 0) return;
+
+    // If we have a listing ID and a token, upload to R2 via backend
+    if (listingId && getToken()) {
+      setUploading(true);
+      try {
+        const newUrls: string[] = [];
+        for (const file of toUpload) {
+          const formData = new FormData();
+          formData.append('file', file);
+          const { data } = await api.post(`/listings/${listingId}/photos`, formData, {
+            headers: { 'Content-Type': 'multipart/form-data' },
+          });
+          newUrls.push(data.url);
+        }
+        onPhotosChange([...photos, ...newUrls], coverIndex);
+      } catch (err) {
+        console.error('Photo upload failed, falling back to local', err);
+        // Fallback: compress and store as data URL
+        const compressed = await Promise.all(toUpload.map(compressImage));
+        onPhotosChange([...photos, ...compressed], coverIndex);
+      } finally {
+        setUploading(false);
+      }
+    } else {
+      // No listing ID yet (new listing) — compress locally, will be uploaded after create
+      const compressed = await Promise.all(toUpload.map(compressImage));
+      onPhotosChange([...photos, ...compressed], coverIndex);
+    }
   }
 
-  function removePhoto(idx: number) {
+  async function removePhoto(idx: number) {
+    const url = photos[idx];
     const next = photos.filter((_, i) => i !== idx);
     const nextCover = next.length === 0 ? 0 : idx === coverIndex ? 0 : coverIndex > idx ? coverIndex - 1 : coverIndex;
+
+    // If it's an R2 URL and we have a listing, delete from backend too
+    if (listingId && getToken() && url.startsWith('http')) {
+      try {
+        await api.delete(`/listings/${listingId}/photos`, { data: { url } });
+      } catch (err) {
+        console.error('Failed to delete photo from R2', err);
+      }
+    }
+
     onPhotosChange(next, nextCover);
   }
 
@@ -75,14 +97,21 @@ export default function PhotoUploader({ photos, coverIndex, onPhotosChange }: Ph
           <button
             type="button"
             onClick={() => inputRef.current?.click()}
-            className="h-24 rounded-xl border-2 border-dashed border-border flex flex-col items-center justify-center gap-1.5 text-t3 hover:border-slate hover:text-t2 transition-colors"
+            disabled={uploading}
+            className="h-24 rounded-xl border-2 border-dashed border-border flex flex-col items-center justify-center gap-1.5 text-t3 hover:border-slate hover:text-t2 transition-colors disabled:opacity-50"
           >
-            <svg viewBox="0 0 24 24" fill="none" width="20" height="20">
-              <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/>
-              <polyline points="17 8 12 3 7 8" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
-              <line x1="12" y1="3" x2="12" y2="15" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/>
-            </svg>
-            <span className="text-xs">上傳相片</span>
+            {uploading ? (
+              <span className="text-xs">上傳中...</span>
+            ) : (
+              <>
+                <svg viewBox="0 0 24 24" fill="none" width="20" height="20">
+                  <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/>
+                  <polyline points="17 8 12 3 7 8" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+                  <line x1="12" y1="3" x2="12" y2="15" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/>
+                </svg>
+                <span className="text-xs">上傳相片</span>
+              </>
+            )}
           </button>
         )}
       </div>
@@ -102,4 +131,25 @@ export default function PhotoUploader({ photos, coverIndex, onPhotosChange }: Ph
       />
     </div>
   );
+}
+
+/** Compress an image file to a data URL (fallback when no backend) */
+async function compressImage(file: File): Promise<string> {
+  return new Promise(resolve => {
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      const maxDim = 1200;
+      const scale = Math.min(1, maxDim / Math.max(img.width, img.height));
+      const w = Math.round(img.width * scale);
+      const h = Math.round(img.height * scale);
+      const canvas = document.createElement('canvas');
+      canvas.width = w;
+      canvas.height = h;
+      canvas.getContext('2d')!.drawImage(img, 0, 0, w, h);
+      resolve(canvas.toDataURL('image/jpeg', 0.82));
+    };
+    img.src = url;
+  });
 }

@@ -1,5 +1,7 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { api } from '../api/client';
 import { RENTAL_TRANSACTIONS } from '../data/rentalTransactions';
+import type { RentalTransaction } from '../types';
 
 interface RentalMarketTableProps {
   district: string;
@@ -10,16 +12,30 @@ const PAGE_SIZE = 5;
 
 export default function RentalMarketTable({ district, categories: listingCats }: RentalMarketTableProps) {
   const [expanded, setExpanded] = useState(false);
+  const [transactions, setTransactions] = useState<RentalTransaction[]>(RENTAL_TRANSACTIONS);
 
   const districtKey = district.split(/[,，\s]/)[0];
 
-  function score(t: (typeof RENTAL_TRANSACTIONS)[0]): number {
+  // Fetch from backend API
+  useEffect(() => {
+    let cancelled = false;
+
+    api.get<RentalTransaction[]>('/reference-data/rental-transactions')
+      .then(({ data }) => {
+        if (!cancelled && data.length > 0) setTransactions(data);
+      })
+      .catch(() => { /* keep fallback */ });
+
+    return () => { cancelled = true; };
+  }, []);
+
+  function score(t: RentalTransaction): number {
     const sameDistrict = t.district === districtKey ? 0 : 1;
     const sameType     = t.categories.some(c => listingCats.includes(c)) ? 0 : 1;
     return sameDistrict * 2 + sameType;
   }
 
-  const sorted = [...RENTAL_TRANSACTIONS].sort((a, b) => {
+  const sorted = [...transactions].sort((a, b) => {
     const scoreDiff = score(a) - score(b);
     if (scoreDiff !== 0) return scoreDiff;
     return b.date.localeCompare(a.date);
