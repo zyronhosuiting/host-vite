@@ -9,33 +9,6 @@ import { mapConversation, mapMessage } from '../api/mappers';
 import type { BackendConversation, BackendMessage } from '../api/mappers';
 import type { Conversation, Message } from '../types';
 
-const FALLBACK_CONVERSATIONS: Conversation[] = [
-  {
-    id: 1, name: '張先生', property: '中環豪華公寓',
-    lastMessage: '請問這個單位還有嗎？', time: '10分鐘前', unread: 2, avatar: '👨',
-    messages: [
-      { from: 'them', text: '你好，請問呢個單位係咪仲有？', time: '14:22' },
-      { from: 'them', text: '請問這個單位還有嗎？', time: '14:23' },
-    ],
-  },
-  {
-    id: 2, name: '李小姐', property: '銅鑼灣兩房單位',
-    lastMessage: '好的，謝謝你的回覆', time: '1小時前', unread: 0, avatar: '👩',
-    messages: [
-      { from: 'me', text: '你好！呢個單位係 2 月 15 號起租，月租 $18,000。', time: '12:05' },
-      { from: 'them', text: '好的，謝謝你的回覆', time: '12:10' },
-    ],
-  },
-  {
-    id: 3, name: '王先生', property: '太子精品一房',
-    lastMessage: '可以預約睇樓嗎？', time: '昨天', unread: 1, avatar: '🧑',
-    messages: [
-      { from: 'them', text: '你好，我對呢個單位有興趣！', time: '昨天 18:30' },
-      { from: 'them', text: '可以預約睇樓嗎？', time: '昨天 18:31' },
-    ],
-  },
-];
-
 export default function MessagesPage() {
   const [searchParams] = useSearchParams();
   const { user } = useAuth();
@@ -46,19 +19,16 @@ export default function MessagesPage() {
 
   const selected = conversations.find(c => c.id === selectedId) ?? null;
 
-  // Fetch conversations from backend (or fallback)
+  // Fetch conversations from backend
   useEffect(() => {
-    if (!getToken() || !user) {
-      setConversations(FALLBACK_CONVERSATIONS);
-      return;
-    }
+    if (!getToken() || !user) return;
 
     api.get<BackendConversation[]>('/messages/conversations')
       .then(({ data }) => {
         const mapped = data.map(c => mapConversation(c, user.id));
-        setConversations(mapped.length > 0 ? mapped : FALLBACK_CONVERSATIONS);
+        setConversations(mapped);
       })
-      .catch(() => setConversations(FALLBACK_CONVERSATIONS));
+      .catch(() => { /* API unavailable */ });
   }, [user]);
 
   // Load messages when a conversation is selected
@@ -115,28 +85,7 @@ export default function MessagesPage() {
 
         setConversations(prev => [mapped, ...prev]);
         setSelectedId(conv.id);
-      }).catch(() => {
-        // Fallback: create locally
-        const newId = Date.now();
-        const newConv: Conversation = {
-          id: newId, name: '房東', property,
-          lastMessage: openingText, time: '剛才', unread: 0, avatar: '🏠',
-          listingId,
-          messages: [{ from: 'me', text: openingText, time: '剛才' }],
-        };
-        setConversations(prev => [newConv, ...prev]);
-        setSelectedId(newId);
-      });
-    } else {
-      const newId = Date.now();
-      const newConv: Conversation = {
-        id: newId, name: '房東', property,
-        lastMessage: openingText, time: '剛才', unread: 0, avatar: '🏠',
-        listingId,
-        messages: [{ from: 'me', text: openingText, time: '剛才' }],
-      };
-      setConversations(prev => [newConv, ...prev]);
-      setSelectedId(newId);
+      }).catch(() => { /* API unavailable */ });
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams]);

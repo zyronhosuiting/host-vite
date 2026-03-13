@@ -1,10 +1,9 @@
 import { useState, useEffect, useCallback } from 'react';
 import { api } from '../api/client';
-import { LISTINGS } from '../data/listings';
 import type { Listing } from '../types';
 
 export function useListings() {
-  const [listings, setListings] = useState<Listing[]>(LISTINGS);
+  const [listings, setListings] = useState<Listing[]>([]);
   const [loaded, setLoaded] = useState(false);
 
   // Fetch listings from backend on mount
@@ -18,7 +17,6 @@ export function useListings() {
         setLoaded(true);
       })
       .catch(() => {
-        // Fallback to local data if API is unavailable
         if (!cancelled) setLoaded(true);
       });
 
@@ -43,9 +41,7 @@ export function useListings() {
       setListings((prev) => [...prev, data]);
       return data;
     } catch {
-      // Fallback: create locally
-      setListings((prev) => [...prev, listing]);
-      return listing;
+      return null;
     }
   }, []);
 

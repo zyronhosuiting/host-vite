@@ -11,7 +11,6 @@ import RentalCard from '../components/RentalCard';
 import RentalMarketTable from '../components/RentalMarketTable';
 import AmenityGrid from '../components/AmenityGrid';
 import ListingCard from '../components/ListingCard';
-import { PRIMARY_SCHOOL_NET, SECONDARY_SCHOOL_NET } from '../data/schoolNets';
 import { getInitials } from '../utils/getInitials';
 
 export default function PropertyDetailPage() {
@@ -24,7 +23,6 @@ export default function PropertyDetailPage() {
   const hostName = user ? (user.name || user.email) : `用戶 ${guestId}`;
   const listing = listings.find(l => l.id === Number(id));
 
-  // Fetch school nets from backend (with local fallback)
   const [schoolNet, setSchoolNet] = useState<{ primarySchoolNet: string; secondarySchoolNet: string } | null>(null);
 
   useEffect(() => {
@@ -37,14 +35,13 @@ export default function PropertyDetailPage() {
           setSchoolNet(data);
         }
       })
-      .catch(() => { /* use local fallback below */ });
+      .catch(() => { /* API unavailable */ });
 
     return () => { cancelled = true; };
   }, [listing]);
 
-  // Resolve school net — prefer API data, fallback to local
-  const primaryNet = schoolNet?.primarySchoolNet ?? (listing ? PRIMARY_SCHOOL_NET[listing.mapLocation] : undefined) ?? '—';
-  const secondaryNet = schoolNet?.secondarySchoolNet ?? (listing ? SECONDARY_SCHOOL_NET[listing.mapLocation] : undefined) ?? '—';
+  const primaryNet = schoolNet?.primarySchoolNet ?? '—';
+  const secondaryNet = schoolNet?.secondarySchoolNet ?? '—';
 
   useEffect(() => {
     window.scrollTo(0, 0);

@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
 import { api } from '../api/client';
-import { RENTAL_TRANSACTIONS } from '../data/rentalTransactions';
 import type { RentalTransaction } from '../types';
 
 interface RentalMarketTableProps {
@@ -12,7 +11,7 @@ const PAGE_SIZE = 5;
 
 export default function RentalMarketTable({ district, categories: listingCats }: RentalMarketTableProps) {
   const [expanded, setExpanded] = useState(false);
-  const [transactions, setTransactions] = useState<RentalTransaction[]>(RENTAL_TRANSACTIONS);
+  const [transactions, setTransactions] = useState<RentalTransaction[]>([]);
 
   const districtKey = district.split(/[,，\s]/)[0];
 
@@ -22,9 +21,9 @@ export default function RentalMarketTable({ district, categories: listingCats }:
 
     api.get<RentalTransaction[]>('/reference-data/rental-transactions')
       .then(({ data }) => {
-        if (!cancelled && data.length > 0) setTransactions(data);
+        if (!cancelled) setTransactions(data);
       })
-      .catch(() => { /* keep fallback */ });
+      .catch(() => { /* API unavailable */ });
 
     return () => { cancelled = true; };
   }, []);
@@ -50,6 +49,15 @@ export default function RentalMarketTable({ district, categories: listingCats }:
 
   const visible = expanded ? rows : rows.slice(0, PAGE_SIZE);
   const hasMore = rows.length > PAGE_SIZE;
+
+  if (transactions.length === 0) {
+    return (
+      <div className="py-8">
+        <h2 className="text-lg font-bold text-t1 mb-4">租賃市場數據</h2>
+        <p className="text-sm text-t3">暫無租賃市場數據</p>
+      </div>
+    );
+  }
 
   return (
     <div className="py-8">
